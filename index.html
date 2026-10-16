@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Differential Geoid Tech Stack Cloud</title>
+    <title>Interactive Geoid Tech Stack</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -47,26 +47,54 @@
             align-items: center;
             justify-content: center;
             will-change: transform, opacity, z-index;
+            cursor: pointer;
         }
 
         .icon {
-            width: 48px;
-            height: 48px;
+            width: 32px;
+            height: 32px;
             object-fit: contain;
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+            /* Added transform to the transition for smooth scaling */
+            transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
         }
 
         .invert-dark {
             filter: invert(1) brightness(2) drop-shadow(0 4px 6px rgba(255,255,255,0.1));
         }
 
+        /* Hover Effects for Icons: Reduced blur to 1px and added scale */
+        .cloud-item:hover .icon:not(.invert-dark) {
+            filter: blur(1px) drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+            opacity: 0.3;
+            transform: scale(1.3);
+        }
+
+        .cloud-item:hover .icon.invert-dark {
+            filter: invert(1) brightness(2) blur(1px) drop-shadow(0 4px 6px rgba(255,255,255,0.1));
+            opacity: 0.3;
+            transform: scale(1.3);
+        }
+
+        /* Centered Name Overlay */
         .name {
-            font-size: 0.75rem;
-            margin-top: 6px;
-            font-weight: 500;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.85rem;
+            font-weight: 700;
             white-space: nowrap;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            text-shadow: 0 2px 8px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,0.8);
             pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+
+        /* Reveal Name on Hover */
+        .cloud-item:hover .name {
+            opacity: 1;
         }
     </style>
 </head>
@@ -207,29 +235,29 @@
             container.appendChild(el);
 
             const t = (i + 0.5) / N;
-            const phi = Math.acos(1 - 2 * t); // Angle from top pole (0) to bottom pole (PI)
+            const phi = Math.acos(1 - 2 * t);
             const initialTheta = angleIncrement * i;
 
-            // Calculate distance from Equator (PI / 2).
-            // 0 = exactly at Equator. 1 = exactly at Pole.
             const distanceFromEquator = Math.abs(phi - Math.PI / 2) / (Math.PI / 2);
-
-            // Differential Rotation Speed
-            // Equator moves at 0.001 per frame. Poles move up to 0.005 per frame.
-            // Using a quadratic curve (pow 2) makes the equator broadly slow and the poles sharply faster
             const rotationSpeed = 0.001 + (Math.pow(distanceFromEquator, 2) * 0.004);
-
             const radiusMultiplier = 0.8 + Math.random() * 0.4;
 
-            itemsData.push({
+            const itemData = {
                 el: el,
                 phi: phi,
-                currentTheta: initialTheta, // Track individualized rotation
-                rotationSpeed: rotationSpeed, // Store individualized speed
+                currentTheta: initialTheta,
+                rotationSpeed: rotationSpeed,
                 radiusMultiplier: radiusMultiplier,
                 floatOffset: Math.random() * Math.PI * 2,
-                floatSpeed: 0.001 + Math.random() * 0.002
-            });
+                floatSpeed: 0.0005 + Math.random() * 0.001,
+                isHovered: false,
+                currentSpeedMultiplier: 1
+            };
+
+            el.addEventListener('mouseenter', () => itemData.isHovered = true);
+            el.addEventListener('mouseleave', () => itemData.isHovered = false);
+
+            itemsData.push(itemData);
         });
 
         function animate(time) {
@@ -243,20 +271,28 @@
             const maxRadiusZ = rZ * 1.2;
 
             itemsData.forEach(item => {
-                // Update this specific item's rotation
-                item.currentTheta += item.rotationSpeed;
+                const targetMultiplier = item.isHovered ? 0.05 : 1;
+                item.currentSpeedMultiplier += (targetMultiplier - item.currentSpeedMultiplier) * 0.08;
+
+                item.currentTheta += (item.rotationSpeed * item.currentSpeedMultiplier);
 
                 const x = rX * item.radiusMultiplier * Math.sin(item.phi) * Math.cos(item.currentTheta);
                 const yBase = rY * item.radiusMultiplier * Math.cos(item.phi);
                 const z = rZ * item.radiusMultiplier * Math.sin(item.phi) * Math.sin(item.currentTheta);
 
-                const floatY = Math.sin(time * item.floatSpeed + item.floatOffset) * 15;
+                const floatY = Math.sin(time * item.floatSpeed + item.floatOffset) * 6;
                 const y = yBase + floatY;
 
                 const zNormalized = (z + maxRadiusZ) / (2 * maxRadiusZ);
-
                 const scale = 0.25 + (zNormalized * 1.35);
                 const opacity = 0.15 + (zNormalized * 0.85);
+
+                if (z > 0) {
+                    item.el.style.pointerEvents = 'auto';
+                } else {
+                    item.el.style.pointerEvents = 'none';
+                    item.isHovered = false;
+                }
 
                 item.el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
                 item.el.style.zIndex = Math.round(z);
