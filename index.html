@@ -3,82 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tech Stack</title>
+    <title>Tech Stack Cloud</title>
     <style>
         :root {
             --bg-color: #0f172a;
-            --card-bg: #1e293b;
             --text-color: #f8fafc;
-            --border-color: #334155;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 40px 20px;
+            padding: 0;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         h1 {
-            margin-bottom: 40px;
+            margin-top: 40px;
+            margin-bottom: 20px;
             font-weight: 600;
+            z-index: 10;
         }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 1200px;
+
+        /* The Cloud Container */
+        #cloud-container {
+            width: 100vw;
+            height: 50vh;
+            position: relative;
+            overflow: hidden;
+            /* Fades out the edges slightly */
+            mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
         }
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
+
+        /* Positions the item in the grid */
+        .cloud-anchor {
+            position: absolute;
+            /* Center the anchor point */
+            transform: translate(-50%, -50%);
+        }
+
+        /* Handles the floating animation and scaling */
+        .cloud-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: transform 0.2s, border-color 0.2s;
+            /* Variables injected via JS */
+            transform: scale(var(--scale));
+            animation: float var(--duration) ease-in-out infinite alternate var(--delay);
+            will-change: transform;
         }
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: #64748b;
-        }
+
         .icon {
             width: 48px;
             height: 48px;
-            margin-bottom: 12px;
             object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
         }
-        /* Inverts completely black logos into white for the dark background */
+
         .invert-dark {
-            filter: invert(1) brightness(2);
+            filter: invert(1) brightness(2) drop-shadow(0 4px 6px rgba(255,255,255,0.1));
         }
+
         .name {
-            font-size: 0.85rem;
-            text-align: center;
+            font-size: 0.75rem;
+            margin-top: 6px;
             font-weight: 500;
+            opacity: 0.8;
+            white-space: nowrap;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* Random Floating Keyframes */
+        @keyframes float {
+            0% {
+                transform: scale(var(--scale)) translate(0, 0);
+            }
+            100% {
+                transform: scale(var(--scale)) translate(var(--tx), var(--ty));
+            }
         }
     </style>
 </head>
 <body>
 
     <h1>My Tech Stack</h1>
-    <div class="grid" id="grid"></div>
+    <div id="cloud-container"></div>
 
     <script>
-        // Fetch original/colored devicons
         const getDevicon = (id, version = 'original') =>
             `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${id}/${id}-${version}.svg`;
-
-        // Fetch raw SVGs directly from SVGL's github static library directory
         const getSvgl = (id) =>
             `https://raw.githubusercontent.com/pheralb/svgl/refs/heads/main/static/library/${id}.svg`;
-
-        // Ultimate fallback for missing icons (guaranteed monochrome)
         const getSimpleIcon = (id) =>
             `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${id}.svg`;
 
@@ -159,56 +178,114 @@
             { name: 'VS Code', url: getDevicon('vscode') },
             { name: 'Vue.js', url: getDevicon('vuejs') },
             { name: 'npm', url: getDevicon('npm', 'original-wordmark') },
-
-            // SVGL Additions & Missing Devicon fill-ins (with simpleicons fallbacks)
             { name: 'Datadog', url: getSvgl('datadog'), fallback: getSimpleIcon('datadog') },
             { name: 'Expo', url: getSvgl('expo'), fallback: getSimpleIcon('expo'), invert: true },
             { name: 'Mapbox', url: getSvgl('mapbox'), fallback: getSimpleIcon('mapbox'), invert: true },
             { name: 'Claude', url: getSvgl('claude'), fallback: getSimpleIcon('anthropic') },
             { name: 'Lovable', url: getSvgl('lovable'), fallback: getSimpleIcon('lovable') },
             { name: 'Cursor', url: getSvgl('cursor'), fallback: getSimpleIcon('cursor'), invert: true },
-            { name: 'Gemini', url: getSvgl('gemini'), fallback: getSimpleIcon('googlegemini') }, // Colorful Gemini
+            { name: 'Gemini', url: getSvgl('gemini'), fallback: getSimpleIcon('googlegemini') },
             { name: 'GPT', url: getSvgl('openai'), fallback: getSimpleIcon('openai'), invert: true },
             { name: 'Stripe', url: getSvgl('stripe'), fallback: getSimpleIcon('stripe') }
         ];
 
-        // Shuffle array using Fisher-Yates
-        for (let i = techs.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [techs[i], techs[j]] = [techs[j], techs[i]];
+        const container = document.getElementById('cloud-container');
+
+        function renderCloud() {
+            container.innerHTML = '';
+
+            const W = container.clientWidth;
+            const H = container.clientHeight;
+            const N = techs.length;
+
+            // Jittered Grid Distribution
+            // Calculate optimal rows and columns to fit all items proportionally based on aspect ratio
+            const aspectRatio = W / H;
+            const R = Math.ceil(Math.sqrt(N / aspectRatio));
+            const C = Math.ceil(N / R);
+
+            // Generate grid cells
+            let cells = [];
+            for (let r = 0; r < R; r++) {
+                for (let c = 0; c < C; c++) {
+                    cells.push({ r, c });
+                }
+            }
+
+            // Shuffle cells randomly
+            cells.sort(() => Math.random() - 0.5);
+
+            techs.forEach((tech, i) => {
+                const cell = cells[i];
+
+                // Base cell dimensions
+                const cellW = W / C;
+                const cellH = H / R;
+
+                // Add random offset within the cell (jitter) to make it organic but evenly spaced
+                const randomX = (Math.random() - 0.5) * (cellW * 0.7);
+                const randomY = (Math.random() - 0.5) * (cellH * 0.7);
+
+                // Calculate final absolute position
+                const x = (cell.c + 0.5) * cellW + randomX;
+                const y = (cell.r + 0.5) * cellH + randomY;
+
+                // Create the wrapper anchor that places it in the grid
+                const anchor = document.createElement('div');
+                anchor.className = 'cloud-anchor';
+                anchor.style.left = `${x}px`;
+                anchor.style.top = `${y}px`;
+
+                // Calculate random depth (z-index) and scale (visual size)
+                const depthScale = Math.random() * 0.8 + 0.6; // Scale between 0.6 and 1.4
+                anchor.style.zIndex = Math.round(depthScale * 100);
+
+                // Create the animated item
+                const item = document.createElement('div');
+                item.className = 'cloud-item';
+
+                // Inject random animation variables
+                item.style.setProperty('--scale', depthScale);
+                item.style.setProperty('--duration', `${3 + Math.random() * 4}s`); // 3s to 7s
+                item.style.setProperty('--delay', `-${Math.random() * 5}s`); // Desync starts
+                item.style.setProperty('--tx', `${(Math.random() - 0.5) * 30}px`); // Drift X
+                item.style.setProperty('--ty', `${(Math.random() - 0.5) * 30}px`); // Drift Y
+
+                // Build Image
+                const img = document.createElement('img');
+                img.src = tech.url;
+                img.alt = tech.name;
+                img.className = `icon ${tech.invert ? 'invert-dark' : ''}`;
+
+                img.onerror = function() {
+                    if (tech.fallback && this.src !== tech.fallback) {
+                        this.src = tech.fallback;
+                        this.classList.add('invert-dark');
+                    } else {
+                        anchor.style.display = 'none';
+                    }
+                };
+
+                // Build Text Label
+                const name = document.createElement('span');
+                name.className = 'name';
+                name.textContent = tech.name;
+
+                item.appendChild(img);
+                item.appendChild(name);
+                anchor.appendChild(item);
+                container.appendChild(anchor);
+            });
         }
 
-        // Render to DOM
-        const grid = document.getElementById('grid');
-        techs.forEach(tech => {
-            const card = document.createElement('div');
-            card.className = 'card';
+        // Initial render
+        renderCloud();
 
-            const img = document.createElement('img');
-            img.src = tech.url;
-            img.alt = tech.name;
-            if (tech.invert) img.classList.add('invert-dark');
-            img.className = `icon ${tech.invert ? 'invert-dark' : ''}`;
-
-            // Fallback handler if primary SVG fails to load
-            img.onerror = function() {
-                if (tech.fallback && this.src !== tech.fallback) {
-                    this.src = tech.fallback;
-                    // SimpleIcons are black by default, so we invert them for the dark theme
-                    this.classList.add('invert-dark');
-                } else {
-                    // Hide the card if even the fallback fails
-                    this.parentElement.style.display = 'none';
-                }
-            };
-
-            const name = document.createElement('span');
-            name.className = 'name';
-            name.textContent = tech.name;
-
-            card.appendChild(img);
-            card.appendChild(name);
-            grid.appendChild(card);
+        // Recalculate positions if the window is resized
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(renderCloud, 200);
         });
     </script>
 </body>
