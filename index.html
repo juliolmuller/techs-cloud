@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Stack</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --border-color: #334155;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            margin-bottom: 40px;
+            font-weight: 600;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #64748b;
+        }
+        .icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            object-fit: contain;
+        }
+        /* Inverts completely black logos into white for the dark background */
+        .invert-dark {
+            filter: invert(1) brightness(2);
+        }
+        .name {
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>My Tech Stack</h1>
+    <div class="grid" id="grid"></div>
+
+    <script>
+        // Fetch original/colored devicons
+        const getDevicon = (id, version = 'original') =>
+            `https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/${id}/${id}-${version}.svg`;
+
+        // Fetch raw SVGs directly from SVGL's github static library directory
+        const getSvgl = (id) =>
+            `https://raw.githubusercontent.com/pheralb/svgl/refs/heads/main/static/library/${id}.svg`;
+
+        // Ultimate fallback for missing icons (guaranteed monochrome)
+        const getSimpleIcon = (id) =>
+            `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${id}.svg`;
+
+        const techs = [
+            { name: 'AWS', url: getDevicon('amazonwebservices', 'original-wordmark') },
+            { name: 'Android', url: getDevicon('android') },
+            { name: 'AngularJS', url: getDevicon('angularjs') },
+            { name: 'Apache', url: getDevicon('apache') },
+            { name: 'Kafka', url: getDevicon('apachekafka', 'plain'), invert: true },
+            { name: 'GraphQL', url: getDevicon('graphql', 'plain') },
+            { name: 'ArgoCD', url: getDevicon('argocd') },
+            { name: 'Axios', url: getDevicon('axios', 'plain'), invert: true },
+            { name: 'Babel', url: getDevicon('babel') },
+            { name: 'Bash', url: getDevicon('bash', 'plain'), invert: true },
+            { name: 'Bootstrap', url: getDevicon('bootstrap') },
+            { name: 'Bun', url: getDevicon('bun') },
+            { name: 'C', url: getDevicon('c') },
+            { name: 'CircleCI', url: getDevicon('circleci', 'plain'), invert: true },
+            { name: 'Composer', url: getDevicon('composer') },
+            { name: 'CSS3', url: getDevicon('css3') },
+            { name: 'Cypress', url: getDevicon('cypressio') },
+            { name: 'Docker', url: getDevicon('docker') },
+            { name: 'DynamoDB', url: getDevicon('dynamodb') },
+            { name: 'Electron', url: getDevicon('electron') },
+            { name: 'Elasticsearch', url: getDevicon('elasticsearch') },
+            { name: 'ESLint', url: getDevicon('eslint') },
+            { name: 'Express', url: getDevicon('express', 'original'), invert: true },
+            { name: 'Fastify', url: getDevicon('fastify', 'plain'), invert: true },
+            { name: 'FeathersJS', url: getDevicon('feathersjs', 'plain'), invert: true },
+            { name: 'Figma', url: getDevicon('figma') },
+            { name: 'Firebase', url: getDevicon('firebase') },
+            { name: 'Git', url: getDevicon('git') },
+            { name: 'GitHub', url: getDevicon('github'), invert: true },
+            { name: 'GitHub Actions', url: getDevicon('githubactions') },
+            { name: 'GitLab', url: getDevicon('gitlab') },
+            { name: 'Go', url: getDevicon('go', 'original-wordmark') },
+            { name: 'Google Cloud', url: getDevicon('googlecloud') },
+            { name: 'gRPC', url: getDevicon('grpc', 'plain'), invert: true },
+            { name: 'HTML5', url: getDevicon('html5') },
+            { name: 'Java', url: getDevicon('java') },
+            { name: 'JavaScript', url: getDevicon('javascript') },
+            { name: 'Jest', url: getDevicon('jest', 'plain') },
+            { name: 'Jira', url: getDevicon('jira') },
+            { name: 'jQuery', url: getDevicon('jquery') },
+            { name: 'Kotlin', url: getDevicon('kotlin') },
+            { name: 'Kubernetes', url: getDevicon('kubernetes', 'plain') },
+            { name: 'Laravel', url: getDevicon('laravel', 'original') },
+            { name: 'Linux', url: getDevicon('linux') },
+            { name: 'Lua', url: getDevicon('lua', 'plain'), invert: true },
+            { name: 'Material UI', url: getDevicon('materialui') },
+            { name: 'MongoDB', url: getDevicon('mongodb') },
+            { name: 'MySQL', url: getDevicon('mysql') },
+            { name: 'NestJS', url: getDevicon('nestjs', 'original') },
+            { name: 'Next.js', url: getDevicon('nextjs', 'plain'), invert: true },
+            { name: 'Node.js', url: getDevicon('nodejs') },
+            { name: 'SQL', url: getDevicon('sqldeveloper') },
+            { name: 'Nuxt', url: getDevicon('nuxtjs') },
+            { name: 'Okta', url: getDevicon('okta', 'plain'), invert: true },
+            { name: 'PostgreSQL', url: getDevicon('postgresql') },
+            { name: 'Postman', url: getDevicon('postman') },
+            { name: 'Prisma', url: getDevicon('prisma', 'original'), invert: true },
+            { name: 'PHP', url: getDevicon('php') },
+            { name: 'Python', url: getDevicon('python') },
+            { name: 'React', url: getDevicon('react') },
+            { name: 'React Native', url: getDevicon('react') },
+            { name: 'Redux', url: getDevicon('redux') },
+            { name: 'Ruby', url: getDevicon('ruby', 'plain') },
+            { name: 'Sass', url: getDevicon('sass') },
+            { name: 'Sanity', url: getDevicon('sanity', 'plain') },
+            { name: 'Socket.io', url: getDevicon('socketio'), invert: true },
+            { name: 'Spring', url: getDevicon('spring') },
+            { name: 'Swagger', url: getDevicon('swagger') },
+            { name: 'Tailwind CSS', url: getDevicon('tailwindcss', 'original') },
+            { name: 'Terraform', url: getDevicon('terraform', 'plain'), invert: true },
+            { name: 'TypeScript', url: getDevicon('typescript') },
+            { name: 'Vercel', url: getDevicon('vercel', 'plain'), invert: true },
+            { name: 'Vite', url: getDevicon('vitejs') },
+            { name: 'VS Code', url: getDevicon('vscode') },
+            { name: 'Vue.js', url: getDevicon('vuejs') },
+            { name: 'npm', url: getDevicon('npm', 'original-wordmark') },
+
+            // SVGL Additions & Missing Devicon fill-ins (with simpleicons fallbacks)
+            { name: 'Datadog', url: getSvgl('datadog'), fallback: getSimpleIcon('datadog') },
+            { name: 'Expo', url: getSvgl('expo'), fallback: getSimpleIcon('expo'), invert: true },
+            { name: 'Mapbox', url: getSvgl('mapbox'), fallback: getSimpleIcon('mapbox'), invert: true },
+            { name: 'Claude', url: getSvgl('claude'), fallback: getSimpleIcon('anthropic') },
+            { name: 'Lovable', url: getSvgl('lovable'), fallback: getSimpleIcon('lovable') },
+            { name: 'Cursor', url: getSvgl('cursor'), fallback: getSimpleIcon('cursor'), invert: true },
+            { name: 'Gemini', url: getSvgl('gemini'), fallback: getSimpleIcon('googlegemini') }, // Colorful Gemini
+            { name: 'GPT', url: getSvgl('openai'), fallback: getSimpleIcon('openai'), invert: true },
+            { name: 'Stripe', url: getSvgl('stripe'), fallback: getSimpleIcon('stripe') }
+        ];
+
+        // Shuffle array using Fisher-Yates
+        for (let i = techs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [techs[i], techs[j]] = [techs[j], techs[i]];
+        }
+
+        // Render to DOM
+        const grid = document.getElementById('grid');
+        techs.forEach(tech => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const img = document.createElement('img');
+            img.src = tech.url;
+            img.alt = tech.name;
+            if (tech.invert) img.classList.add('invert-dark');
+            img.className = `icon ${tech.invert ? 'invert-dark' : ''}`;
+
+            // Fallback handler if primary SVG fails to load
+            img.onerror = function() {
+                if (tech.fallback && this.src !== tech.fallback) {
+                    this.src = tech.fallback;
+                    // SimpleIcons are black by default, so we invert them for the dark theme
+                    this.classList.add('invert-dark');
+                } else {
+                    // Hide the card if even the fallback fails
+                    this.parentElement.style.display = 'none';
+                }
+            };
+
+            const name = document.createElement('span');
+            name.className = 'name';
+            name.textContent = tech.name;
+
+            card.appendChild(img);
+            card.appendChild(name);
+            grid.appendChild(card);
+        });
+    </script>
+</body>
+</html>
