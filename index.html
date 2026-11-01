@@ -320,9 +320,9 @@
 
         function animate(time) {
             // Clamped so a backgrounded tab or a stalled frame can't jump the scene.
-            const dt = lastTime ? Math.min(time - lastTime, 50) : 16.667;
+            const rawGap = lastTime ? time - lastTime : 16.667;
             lastTime = time;
-            const k = dt / 16.667; // 1 at 60Hz; every speed below is defined per frame
+            const k = Math.min(rawGap / 16.667, 50 / 16.667); // clamped for speed math
 
             const rX = W * 0.4;
             const rY = H * 0.4;
@@ -337,11 +337,19 @@
                 // Only the last frame that actually moved sets the coast speed, so a
                 // release after a pause doesn't launch a stale flick.
                 if (dragRotation !== 0) {
-                    dragVelocity = dragRotation / k;
+                    dragVelocity = dragRotation / (rawGap / 16.667); // real gap for velocity
                 } else {
-                    dragVelocity *= 0.8;
+                    dragVelocity *= Math.pow(0.8, k);
                 }
             } else {
+                // If drag ended between frames, queued movement must seed coast
+                // rather than disappearing (fast flick released between rAFs).
+                if (dragRotation !== 0) {
+                    const flick = dragRotation / (rawGap / 16.667 || 1);
+                    if (Math.abs(flick) > Math.abs(dragVelocity) || Math.abs(dragVelocity) < 1e-6) {
+                        dragVelocity = flick;
+                    }
+                }
                 // Friction is applied per second, expressed as frame equivalents of dt.
                 dragVelocity *= Math.pow(0.95, k);
                 if (Math.abs(dragVelocity) < 0.000001) dragVelocity = 0;
