@@ -18,6 +18,7 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            overscroll-behavior: none;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -40,6 +41,7 @@
             mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
             -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 100%);
             cursor: grab;
+            touch-action: none;
         }
 
         #cloud-container:active {
@@ -54,7 +56,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            will-change: transform, opacity, z-index;
+            will-change: transform, opacity;
             cursor: pointer;
         }
 
@@ -267,42 +269,60 @@
         });
 
         // --- Drag & Momentum Physics ---
+        // Cached geometry: measured on resize instead of read every frame.
+        let W = container.clientWidth;
+        let H = container.clientHeight;
+        window.addEventListener('resize', () => {
+            W = container.clientWidth;
+            H = container.clientHeight;
+        });
+
+        // Pointer travel accumulates into pendingRotation and is consumed once per
+        // frame, so total rotation follows total distance, not the event rate.
         let isDragging = false;
-        let previousMouseX = 0;
+        let activePointerId = null;
+        let lastPointerX = 0;
+        let pendingRotation = 0;
         let dragVelocity = 0;
 
-        const handleDragStart = (x) => {
+        container.addEventListener('pointerdown', (e) => {
+            if (isDragging) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
             isDragging = true;
-            previousMouseX = x;
-        };
+            activePointerId = e.pointerId;
+            lastPointerX = e.clientX;
+            dragVelocity = 0;
+            container.setPointerCapture(e.pointerId);
+        });
 
-        const handleDragMove = (x) => {
-            if (!isDragging) return;
-            const deltaX = x - previousMouseX;
-            previousMouseX = x;
+        container.addEventListener('pointermove', (e) => {
+            // A second finger must not hijack the drag.
+            if (!isDragging || e.pointerId !== activePointerId) return;
+            const deltaX = e.clientX - lastPointerX;
+            lastPointerX = e.clientX;
 
-            // INVERTED DELTA X: Moving mouse right (+deltaX) should decrease theta to move items right.
-            dragVelocity = -(deltaX / window.innerWidth) * 2.5;
-        };
+            // INVERTED DELTA X: Moving the pointer right should turn the items right.
+            pendingRotation += -(deltaX / W) * 2.5;
+        });
 
-        const handleDragEnd = () => {
+        const endDrag = (e) => {
+            if (e && e.pointerId !== undefined && e.pointerId !== activePointerId) return;
             isDragging = false;
+            activePointerId = null;
         };
+        container.addEventListener('pointerup', endDrag);
+        container.addEventListener('pointercancel', endDrag);
+        window.addEventListener('blur', endDrag);
 
-        // Mouse Events
-        container.addEventListener('mousedown', (e) => handleDragStart(e.clientX));
-        window.addEventListener('mousemove', (e) => handleDragMove(e.clientX));
-        window.addEventListener('mouseup', handleDragEnd);
 
-        // Touch Events
-        container.addEventListener('touchstart', (e) => handleDragStart(e.touches[0].clientX), { passive: true });
-        window.addEventListener('touchmove', (e) => handleDragMove(e.touches[0].clientX), { passive: true });
-        window.addEventListener('touchend', handleDragEnd);
-
+        let lastTime = 0;
+        let rafId = 0;
 
         function animate(time) {
-            const W = container.clientWidth;
-            const H = container.clientHeight;
+            // Clamped so a backgrounded tab or a stalled frame can't jump the scene.
+            const dt = lastTime ? Math.min(time - lastTime, 50) : 16.667;
+            lastTime = time;
+            const k = dt / 16.667; // 1 at 60Hz; every speed below is defined per frame
 
             const rX = W * 0.4;
             const rY = H * 0.4;
@@ -310,17 +330,30 @@
 
             const maxRadiusZ = rZ * 1.2;
 
-            // Apply friction/damping to the drag velocity when let go
-            if (!isDragging) {
-                dragVelocity *= 0.95;
+            let dragRotation = pendingRotation; // consumed once, frame or not
+            pendingRotation = 0;
+
+            if (isDragging) {
+                // Only the last frame that actually moved sets the coast speed, so a
+                // release after a pause doesn't launch a stale flick.
+                if (dragRotation !== 0) {
+                    dragVelocity = dragRotation / k;
+                } else {
+                    dragVelocity *= 0.8;
+                }
+            } else {
+                // Friction is applied per second, expressed as frame equivalents of dt.
+                dragVelocity *= Math.pow(0.95, k);
+                if (Math.abs(dragVelocity) < 0.000001) dragVelocity = 0;
+                dragRotation += dragVelocity * k;
             }
 
             itemsData.forEach(item => {
                 const targetMultiplier = item.isHovered ? 0.05 : 1;
-                item.currentSpeedMultiplier += (targetMultiplier - item.currentSpeedMultiplier) * 0.08;
+                item.currentSpeedMultiplier += (targetMultiplier - item.currentSpeedMultiplier) * (1 - Math.pow(0.92, k));
 
-                // Add the global dragVelocity to the item's individual rotation
-                item.currentTheta += (item.rotationSpeed * item.currentSpeedMultiplier) + dragVelocity;
+                // Add the global drag rotation to the item's individual rotation
+                item.currentTheta += (item.rotationSpeed * item.currentSpeedMultiplier * k) + dragRotation;
 
                 const x = rX * item.radiusMultiplier * Math.sin(item.phi) * Math.cos(item.currentTheta);
                 const yBase = rY * item.radiusMultiplier * Math.cos(item.phi);
@@ -345,10 +378,25 @@
                 item.el.style.opacity = opacity;
             });
 
-            requestAnimationFrame(animate);
+            rafId = requestAnimationFrame(animate);
         }
 
-        requestAnimationFrame(animate);
+        function startLoop() {
+            if (!rafId) rafId = requestAnimationFrame(animate);
+        }
+
+        // No point burning frames while the tab is hidden.
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                cancelAnimationFrame(rafId);
+                rafId = 0;
+            } else {
+                lastTime = 0;
+                startLoop();
+            }
+        });
+
+        startLoop();
     </script>
 </body>
 </html>
