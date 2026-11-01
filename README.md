@@ -28,9 +28,10 @@ This project is a browser-based, interactive 3D geoid of my tech stack. It scatt
 ## :trophy: Lessons Learned
 
 - Distributing points evenly on a sphere with the Fibonacci golden-ratio spiral.
-- Faking a 3D scene with CSS `perspective` and per-frame `transform`, `opacity`, and `z-index`, without Three.js.
+- Faking a 3D scene with per-frame `transform`, `opacity`, and `z-index`, without Three.js or a 3D library.
 - Mapping a Z coordinate to scale, fade, stacking order, and `pointer-events` so only the front hemisphere is interactive.
-- Drag-and-inertia physics: velocity from mouse/touch delta, friction damping on release.
+- Drag physics driven by accumulated pointer travel instead of per-event deltas, using Pointer Events with capture, cancel, and focus-loss handling.
+- Frame-time scaling so orbit, hover easing, and inertia keep the same speed on 60, 90, and 144 Hz displays.
 - Latitude-based rotation speeds (faster near the poles) plus a hover slowdown lerp.
 - Subtle per-icon sine float so the geoid doesn't look rigid.
 - Loading logos from Devicon, SVGL, and Simple Icons with `onerror` fallbacks and invert filters for dark backgrounds.
